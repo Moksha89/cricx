@@ -12,6 +12,25 @@ var message: Label
 var action: Button
 var shot_button: Button
 var aim_button: Button
+var bowling_nets := false
+var mode_button: Button
+var length_button: Button
+var pace_button: Button
+var playback_button: Button
+var nets_playback := 1.0
+var bounce_marker: MeshInstance3D
+var hint_label: Label
+var session_label: Label
+var nets: Node3D
+var line_index := 1
+var length_index := 1
+var pace_index := 1
+const NET_LINES := [-0.60, 0.0, 0.60]
+const NET_LENGTHS := [4.5, 6.8, 8.8]
+const NET_PACES := [18.0, 21.0, 24.0]
+var last_release := Vector3.ZERO
+var last_crossing := Vector3.ZERO
+var last_launch_velocity := Vector3.ZERO
 var score := 0
 var deliveries := 0
 var wickets := 0
@@ -184,6 +203,7 @@ func _ready() -> void:
 	camera = Camera3D.new()
 	add_child(camera)
 	set_camera()
+	build_nets()
 	build_ui()
 	(batsman as CricketAthlete).bat_pose(bat, -10, 0)
 	if "--smoke-test" in OS.get_cmdline_user_args():
@@ -192,7 +212,13 @@ func _ready() -> void:
 		call_deferred("capture")
 
 func set_camera() -> void:
-	if view == 0:
+	if bowling_nets and view == 0:
+		camera.position = Vector3(0.75, 3.7, -20)
+		camera.look_at(Vector3(0, 0.65, 3))
+	elif bowling_nets and view == 1:
+		camera.position = Vector3(5.2, 2.7, -11.8)
+		camera.look_at(Vector3(0.75, 1.2, -12))
+	elif view == 0:
 		camera.position = Vector3(0, 4.5, 16)
 		camera.look_at(Vector3(0, 1, -3))
 	else:
@@ -237,12 +263,15 @@ func build_ui() -> void:
 	var title := VBoxContainer.new()
 	row.add_child(title)
 	title.add_child(label("CRICX  /  FIRST NETS", 25, GOLD))
-	title.add_child(label("BOUNDARY NETS • 6 balls • Original prototype", 16))
+	session_label = label("BOUNDARY NETS • 6 balls • Original prototype", 16)
+	title.add_child(session_label)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	score_label = label("0 / 0     0.0 overs", 25)
 	row.add_child(score_label)
+	mode_button = button("BOWLING NETS", toggle_nets)
+	row.add_child(mode_button)
 	row.add_child(button("CAMERA", func(): view = 1 - view; set_camera()))
 	row.add_child(button("LICENCES", show_licences))
 	var bottom := PanelContainer.new()
@@ -260,15 +289,21 @@ func build_ui() -> void:
 	controls.add_theme_constant_override("separation", 16)
 	content.add_child(controls)
 	controls.add_child(button("RESTART", reset))
-	shot_button = button("SHOT: DRIVE", func(): loft = not loft; shot_button.text = "SHOT: LOFT" if loft else "SHOT: DRIVE")
+	shot_button = button("SHOT: DRIVE", choose_shot_or_line)
 	controls.add_child(shot_button)
-	aim_button = button("AIM: STRAIGHT", func(): aim = -0.45 if aim == 0 else (0.45 if aim < 0 else 0.0); aim_button.text = "AIM: LEFT" if aim < 0 else ("AIM: RIGHT" if aim > 0 else "AIM: STRAIGHT"))
+	aim_button = button("AIM: STRAIGHT", choose_aim_or_length)
 	controls.add_child(aim_button)
+	pace_button = button("PACE: 76 km/h", choose_pace)
+	pace_button.visible = false
+	controls.add_child(pace_button)
+	playback_button = button("REPLAY: 1×", func(): nets_playback = 0.5 if nets_playback == 1.0 else (0.25 if nets_playback == 0.5 else 1.0); refresh_net_controls())
+	playback_button.visible = false
+	controls.add_child(playback_button)
 	action = button("BOWL", act)
 	controls.add_child(action)
-	var hint := label("Touch SWING as the ball reaches you • Boundaries only: 4 / 6 • No pitch marker", 16)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	content.add_child(hint)
+	hint_label = label("Touch SWING as the ball reaches you • Boundaries only: 4 / 6 • No pitch marker", 16)
+	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	content.add_child(hint_label)
 
 func show_licences() -> void:
 	var dialog := AcceptDialog.new()
@@ -307,13 +342,19 @@ func act() -> void:
 		clock = 0
 		hit = false
 		contact_checked = false
+		bounce_marker.visible = false
 		swing_age = -10
-		delivery_x = rng.randf_range(-0.55, 0.55)
-		delivery_speed = rng.randf_range(22, 27)
+		delivery_x = NET_LINES[line_index] if bowling_nets else rng.randf_range(-0.55, 0.55)
+		delivery_speed = NET_PACES[pace_index] if bowling_nets else rng.randf_range(22, 27)
 		message.text = "Read the ball. " + ("LOFT" if loft else "DRIVE") + " selected."
-		action.text = "SWING"
+		if bowling_nets:
+			message.text = "Watch the gather, front-foot plant and release."
+			action.text = "BOWLING…"
+			action.disabled = true
+		else:
+			action.text = "SWING"
 	elif phase == "delivery" or phase == "runup":
-		if swing_age < -5:
+		if not bowling_nets and swing_age < -5:
 			swing_age = 0
 			action.disabled = true
 	elif phase == "finished":
@@ -328,6 +369,8 @@ func swing_angle(age: float) -> float:
 	return lerpf(-1.6, 0, clampf((age - 0.36) / 0.3, 0, 1))
 
 func _physics_process(delta: float) -> void:
+	if bowling_nets:
+		delta *= nets_playback
 	clock += delta
 	motion_time += delta
 	if swing_age >= 0:
@@ -347,17 +390,24 @@ func _physics_process(delta: float) -> void:
 			(bowler as CricketAthlete).offspin_pose(OffspinAction.RELEASE_TIME)
 			var origin := (bowler as CricketAthlete).release_point()
 			var lateral_speed := delivery_speed * (delivery_x - origin.x) / (10.06 - origin.z)
-			physics.launch(origin, Vector3(lateral_speed, -1.4, delivery_speed))
+			last_release = origin
+			last_launch_velocity = Vector3(lateral_speed, -1.4, delivery_speed)
+			if bowling_nets:
+				last_launch_velocity = nets_velocity(origin, Vector3(delivery_x, CricketBallPhysics.GROUND, NET_LENGTHS[length_index]), delivery_speed)
+			physics.launch(origin, last_launch_velocity)
 			ball.position = physics.position + Vector3(0, 0.039, 0)
 			ball.visible = true
 	elif phase == "delivery" or phase == "flight":
 		var before := physics.position
 		physics.advance(delta)
+		if bowling_nets and physics.bounces > 0:
+			bounce_marker.position = Vector3(physics.first_bounce_position.x, 0.06, physics.first_bounce_position.z)
+			bounce_marker.visible = true
 		ball.position = physics.position + Vector3(0, 0.039, 0)
 		if phase == "delivery":
 			(bowler as CricketAthlete).follow_pose(clock)
 			bowler.position.z = -15.0 + OffspinAction.travel(OffspinAction.RELEASE_TIME + clock)
-			if not contact_checked and CricketBallPhysics.crosses_plane(before, physics.position, 8.6):
+			if not bowling_nets and not contact_checked and CricketBallPhysics.crosses_plane(before, physics.position, 8.6):
 				contact_checked = true
 				var point := CricketBallPhysics.at_plane(before, physics.position, 8.6)
 				var fraction := (8.6 - before.z) / (physics.position.z - before.z)
@@ -374,7 +424,13 @@ func _physics_process(delta: float) -> void:
 					follow_camera = true
 			if phase == "delivery" and CricketBallPhysics.crosses_plane(before, physics.position, 10.06):
 				var point := CricketBallPhysics.at_plane(before, physics.position, 10.06)
-				if CricketBallPhysics.strikes_stumps(point):
+				if bowling_nets:
+					last_crossing = point
+					var struck := CricketBallPhysics.strikes_stumps(point)
+					if struck:
+						wickets += 1
+					finish_delivery(nets_result(struck))
+				elif CricketBallPhysics.strikes_stumps(point):
 					wickets += 1
 					finish_delivery("Bowled! The delivery struck your stumps.")
 				else:
@@ -402,7 +458,7 @@ func _physics_process(delta: float) -> void:
 		if deliveries >= 6:
 			phase = "finished"
 			action.text = "PLAY AGAIN"
-			message.text = "Over complete — %d runs, %d wickets. Play again?" % [score, wickets]
+			message.text = ("Nets complete — %d / 6 deliveries hit the stumps." % wickets) if bowling_nets else ("Over complete — %d runs, %d wickets. Play again?" % [score, wickets])
 		else:
 			phase = "ready"
 			action.text = "BOWL"
@@ -424,7 +480,7 @@ func finish_delivery(text_value: String) -> void:
 	update_score()
 
 func update_score() -> void:
-	score_label.text = "%d / %d     %d.%d overs" % [score, wickets, deliveries / 6, deliveries % 6]
+	score_label.text = ("%d / 6 balls   %d hits" % [deliveries, wickets]) if bowling_nets else ("%d / %d     %d.%d overs" % [score, wickets, deliveries / 6, deliveries % 6])
 
 func reset() -> void:
 	score = 0
@@ -442,10 +498,11 @@ func reset() -> void:
 	bowler.position = Vector3(0.75, 0.04, -15)
 	(bowler as CricketAthlete).idle_pose(0)
 	ball.visible = false
+	bounce_marker.visible = false
 	action.disabled = false
 	action.text = "BOWL"
-	message.text = "Fresh over. Tap BOWL when you are ready."
-	shot_button.text = "SHOT: LOFT" if loft else "SHOT: DRIVE"
+	message.text = "Choose line, length and pace, then tap BOWL." if bowling_nets else "Fresh over. Tap BOWL when you are ready."
+	refresh_net_controls()
 	set_camera()
 	(batsman as CricketAthlete).bat_pose(bat, -10, 0)
 	update_score()
@@ -502,6 +559,8 @@ func smoke_test() -> void:
 	get_tree().quit()
 
 func capture() -> void:
+	if "--nets" in OS.get_cmdline_user_args():
+		toggle_nets()
 	if "--overview" in OS.get_cmdline_user_args():
 		view = 1
 		set_camera()
@@ -512,3 +571,93 @@ func capture() -> void:
 	await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png("res://build/scene.png")
 	get_tree().quit()
+
+func choose_shot_or_line() -> void:
+	if bowling_nets:
+		if phase != "ready" and phase != "finished":
+			return
+		line_index = (line_index + 1) % NET_LINES.size()
+	else:
+		loft = not loft
+	refresh_net_controls()
+
+func choose_aim_or_length() -> void:
+	if bowling_nets:
+		if phase != "ready" and phase != "finished":
+			return
+		length_index = (length_index + 1) % NET_LENGTHS.size()
+	else:
+		aim = -0.45 if aim == 0 else (0.45 if aim < 0 else 0.0)
+	refresh_net_controls()
+
+func choose_pace() -> void:
+	if phase == "ready" or phase == "finished":
+		pace_index = (pace_index + 1) % NET_PACES.size()
+	refresh_net_controls()
+
+func refresh_net_controls() -> void:
+	shot_button.text = ("LINE: " + ["LEFT", "MIDDLE", "RIGHT"][line_index]) if bowling_nets else ("SHOT: LOFT" if loft else "SHOT: DRIVE")
+	aim_button.text = ("LENGTH: " + ["SHORT", "GOOD", "FULL"][length_index]) if bowling_nets else ("AIM: LEFT" if aim < 0 else ("AIM: RIGHT" if aim > 0 else "AIM: STRAIGHT"))
+	pace_button.text = "PACE: %d km/h" % roundi(NET_PACES[pace_index] * 3.6)
+	pace_button.visible = bowling_nets
+	playback_button.visible = bowling_nets
+	playback_button.text = "REPLAY: " + ("1×" if nets_playback == 1 else ("½×" if nets_playback == 0.5 else "¼×"))
+
+func toggle_nets() -> void:
+	bowling_nets = not bowling_nets
+	nets.visible = bowling_nets
+	batsman.visible = not bowling_nets
+	umpire.visible = not bowling_nets
+	for fielder in fielders:
+		fielder.visible = not bowling_nets
+	mode_button.text = "BATTING NETS" if bowling_nets else "BOWLING NETS"
+	session_label.text = "BOWLING NETS • Action / line / length" if bowling_nets else "BOUNDARY NETS • 6 balls • Original prototype"
+	hint_label.text = "CAMERA: behind bowler / side action • Straight-ball test • Spin physics not yet included" if bowling_nets else "Touch SWING as the ball reaches you • Boundaries only: 4 / 6 • No pitch marker"
+	view = 0
+	reset()
+
+static func nets_velocity(origin: Vector3, landing: Vector3, forward_speed: float) -> Vector3:
+	# Solve the ballistic release needed to land at the chosen point.
+	# Speed control is forward pace, not measured celebrity release speed.
+	var flight_time := (landing.z - origin.z) / forward_speed
+	assert(flight_time > 0)
+	return Vector3((landing.x - origin.x) / flight_time,
+		(landing.y - origin.y + 0.5 * CricketBallPhysics.GRAVITY * flight_time * flight_time) / flight_time,
+		forward_speed)
+
+func nets_result(struck: bool) -> String:
+	var bounce := physics.first_bounce_position
+	return ("STUMPS HIT" if struck else "MISSED STUMPS") + " • Bounce %.1f m before stumps • Line %.2f m • Release %.2f m" % [10.06 - bounce.z, bounce.x, last_release.y]
+
+func build_nets() -> void:
+	nets = Node3D.new()
+	nets.name = "BowlingNets"
+	add_child(nets)
+	nets.visible = false
+	bounce_marker = cylinder(nets, 0.16, 0.008, Vector3.ZERO, GOLD)
+	bounce_marker.visible = false
+	var wires: Array[Transform3D] = []
+	for side in [-1, 1]:
+		for row in range(9):
+			wires.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.009, 0.009, 29)), Vector3(side * 2.6, row * 0.4 + 0.06, -1.5)))
+		for column in range(74):
+			wires.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.009, 3.2, 0.009)), Vector3(side * 2.6, 1.66, -16 + column * 0.4)))
+		for z in [-16, -8, 0, 8, 13]:
+			cylinder(nets, 0.04, 3.3, Vector3(side * 2.6, 1.69, z), Color("38545c"))
+	for row in range(9):
+		wires.append(Transform3D(Basis.IDENTITY.scaled(Vector3(5.2, 0.009, 0.009)), Vector3(0, row * 0.4 + 0.06, 13)))
+	for column in range(14):
+		wires.append(Transform3D(Basis.IDENTITY.scaled(Vector3(0.009, 3.2, 0.009)), Vector3(-2.6 + column * 0.4, 1.66, 13)))
+	var mesh := MultiMesh.new()
+	mesh.transform_format = MultiMesh.TRANSFORM_3D
+	var unit := BoxMesh.new()
+	unit.size = Vector3.ONE
+	mesh.mesh = unit
+	mesh.instance_count = wires.size()
+	for index in range(wires.size()):
+		mesh.set_instance_transform(index, wires[index])
+	var fence := MultiMeshInstance3D.new()
+	fence.multimesh = mesh
+	fence.material_override = material(Color("44606a"))
+	fence.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	nets.add_child(fence)

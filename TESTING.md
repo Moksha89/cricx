@@ -36,3 +36,16 @@ Current APK SHA-256: `151b9ce83ce31d7fc5616819d785522318d5ebb6202107c808b345e039
 All physics (1,845 checks), UI, animation and six-ball gameplay checks passed after the action changes. Animation validation additionally checks front-foot world position from plant to release, near-straight release arm and lateral torso lean. The longer run-up required a longer smoke-test simulation horizon; scoring and wicket expectations remain unchanged. All script suites now fail on engine errors as well as test failure exit codes.
 
 180 side/front review frames rendered under desktop OpenGL; release poses inspected. The review MP4 is hand-authored from uploaded reference footage, not motion capture. Online research requests returned HTTP 403; repertoire notes explicitly remain provisional. No new APK was built and no Android runtime test was performed for this source update. The current APK and its checksum above still refer to version 0.2.0.
+
+## Bowling nets — APK 0.3.0 (2026-10-03)
+
+This entry supersedes previous APK checksums and source-only status.
+
+- All physics, UI, animation and batting smoke checks passed.
+- Bowling nets suite passed all 27 combinations of three lines, three lengths and three paces. Actual first bounce is within 25 mm of the target, and hits/misses follow the actual wicket crossing. Six-ball completion, switching to batting, active restart and half-speed playback passed.
+- Bowling nets screen rendered under desktop OpenGL and inspected visually; controls fit the 1280 × 720 layout.
+- Android debug export succeeded; v2/v3 signatures and 16 KB zip alignment verified.
+- No physical Android phone or emulator was connected for this version. Android runtime, Samsung compatibility, heat and performance remain unverified.
+- Net walls are visual geometry. This is straight-ball simulation with uncalibrated surface parameters and estimated animation, not measured Harbhajan deliveries or a realistic scanned character.
+
+Current APK SHA-256: `8547f1ce895bbb0e36a2a615548cf5359d0108a3752c15a3d0bf50b9794d1016`.

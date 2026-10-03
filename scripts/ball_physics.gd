@@ -17,6 +17,7 @@ var velocity := Vector3.ZERO
 var bounces := 0
 var rolling := false
 var boundary_score := 0
+var first_bounce_position := Vector3.INF
 
 func launch(origin: Vector3, initial_velocity: Vector3) -> void:
 	position = origin
@@ -24,6 +25,7 @@ func launch(origin: Vector3, initial_velocity: Vector3) -> void:
 	bounces = 0
 	rolling = false
 	boundary_score = 0
+	first_bounce_position = Vector3.INF
 
 func advance(delta: float) -> void:
 	assert(delta >= 0)
@@ -55,6 +57,8 @@ func advance(delta: float) -> void:
 				velocity.y = -velocity.y * RESTITUTION
 				velocity.x *= IMPACT_RETENTION
 				velocity.z *= IMPACT_RETENTION
+				if bounces == 0:
+					first_bounce_position = position
 				bounces += 1
 				if velocity.y < 0.6:
 					rolling = true

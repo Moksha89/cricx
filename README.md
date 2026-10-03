@@ -67,4 +67,12 @@ Original articulated athletes replace fixed-limb characters. Two-link arm IK kee
 
 ## Off-spin reference study (source update)
 
-See [the reference study](docs/offspin-reference-study.md) for video observations, provisional delivery descriptions, research access limitations and the spin physics plan. A hand-authored action adds a torso pivot, gather, front-foot plant, high release and follow-through. The ball releases from the hand and the bowler travels beside the stumps. This remains placeholder art and estimated animation, not an exact likeness or motion capture. [Watch the side/front action study](downloads/bowling-action-study.mp4). The downloadable APK remains version 0.2.0 and does not contain this source update.
+See [the reference study](docs/offspin-reference-study.md) for video observations, provisional delivery descriptions, research access limitations and the spin physics plan. A hand-authored action adds a torso pivot, gather, front-foot plant, high release and follow-through. The ball releases from the hand and the bowler travels beside the stumps. This remains placeholder art and estimated animation, not an exact likeness or motion capture. [Watch the side/front action study](downloads/bowling-action-study.mp4). The action is included in version 0.3.0 with bowling nets; see below.
+
+## Bowling nets (0.3.0)
+
+Tap **BOWLING NETS** at the top. Nets mode hides the batter and fielders and isolates the bowler. Choose **LINE**, **LENGTH** (short/good/full) and **PACE**, then **BOWL**. **REPLAY** changes playback to 1×, ½× or ¼×; **CAMERA** switches behind-bowler and side-action views. A gold spot records the actual first bounce after it occurs. Each result shows bounce distance before the stumps, lateral line and release height. Six deliveries finish a session. **BATTING NETS** returns to the original batting practice.
+
+This tests straight-ball release, ballistic landing and stump contact. Pace selections are forward speeds, not measured Harbhajan release speeds. Spin-dependent flight/turn and collisions with the net mesh are not implemented. The referenced off-spin action remains a hand-authored study using placeholder art. The simulation targets the selected landing point to make checks reproducible; manual release skill, variation in accuracy and real-world calibration are future work.
+
+`tests/bowling_nets_test.gd` checks all 27 line/length/pace combinations, actual landing error, stump outcomes, six-ball completion, mode switching, restart and slowed playback.

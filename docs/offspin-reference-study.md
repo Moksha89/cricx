@@ -69,7 +69,7 @@ Required checks include mirror tests for opposite lateral spin, timestep stabili
 
 Tests cover fixed arm lengths, foot height, two-hand bat grip, release linkage, planted front shoe, a near-straight release arm and release lean. These are implementation constraints, not evidence of motion-capture accuracy or similarity to Harbhajan.
 
-`tools/bowling_review.gd` renders 180 frames covering side/front views. Review both views against the supplied footage before considering this animation finished. The existing downloadable APK remains 0.2.0 while this review study is developed.
+`tools/bowling_review.gd` renders 180 frames covering side/front views. Review both views against the supplied footage before considering this animation finished. The action study is now included in APK 0.3.0 along with straight-ball bowling nets. Off-break/doosra spin physics remains unimplemented.
 
 ## External verification still needed
 
