@@ -64,3 +64,7 @@ Before the next milestone, test the APK on actual phones: ball visibility, touch
 ## Player movement update (0.2.0)
 
 Original articulated athletes replace fixed-limb characters. Two-link arm IK keeps hands on the bat through drive and loft animations. Bowler legs stride and gather before an overarm release; the ball starts at the actual animated hand position. Fielders breathe in place. `tests/animation_test.gd` checks limb lengths, foot height, bat grip and actual release linkage. These are procedural stylised models, not realistic textured assets or motion capture.
+
+## Off-spin reference study (source update)
+
+See [the reference study](docs/offspin-reference-study.md) for video observations, provisional delivery descriptions, research access limitations and the spin physics plan. A hand-authored action adds a torso pivot, gather, front-foot plant, high release and follow-through. The ball releases from the hand and the bowler travels beside the stumps. This remains placeholder art and estimated animation, not an exact likeness or motion capture. [Watch the side/front action study](downloads/bowling-action-study.mp4). The downloadable APK remains version 0.2.0 and does not contain this source update.

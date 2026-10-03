@@ -30,3 +30,9 @@ This section supersedes prior APK checksums for the current download.
 - Art remains original stylised procedural geometry; no scans, texture maps or motion-capture assets. Fielders do not pursue the ball.
 
 Current APK SHA-256: `151b9ce83ce31d7fc5616819d785522318d5ebb6202107c808b345e0397958f7`.
+
+## Reference-action source update (2026-10-03; not packaged in APK)
+
+All physics (1,845 checks), UI, animation and six-ball gameplay checks passed after the action changes. Animation validation additionally checks front-foot world position from plant to release, near-straight release arm and lateral torso lean. The longer run-up required a longer smoke-test simulation horizon; scoring and wicket expectations remain unchanged. All script suites now fail on engine errors as well as test failure exit codes.
+
+180 side/front review frames rendered under desktop OpenGL; release poses inspected. The review MP4 is hand-authored from uploaded reference footage, not motion capture. Online research requests returned HTTP 403; repertoire notes explicitly remain provisional. No new APK was built and no Android runtime test was performed for this source update. The current APK and its checksum above still refer to version 0.2.0.

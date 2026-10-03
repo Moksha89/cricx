@@ -26,6 +26,7 @@ var umpire: Node3D
 var bowling_arm: Node3D
 var follow_camera := false
 var delivery_x := 0.0
+var bowling_release_offset := 0.0
 var delivery_speed := 23.0
 var hit := false
 var view := 0
@@ -167,11 +168,15 @@ func _ready() -> void:
 	bat.position = Vector3(0.18, 1.12, 0.10)
 	box(bat, Vector3(0.19, 0.85, 0.09), Vector3(0, -0.4, 0), Color("e1bd7d"))
 	cylinder(bat, 0.035, 0.3, Vector3(0, 0.16, 0), Color("e04943"))
-	bowler = player(Vector3(0, 0, -15), Color("df6549"))
+	bowler = player(Vector3(0.75, 0, -15), Color("df6549"))
+	(bowler as CricketAthlete).configure_spin_bowler()
 	umpire = player(Vector3(1.5, 0, -11.8), Color("eeeeeb"))
 	cylinder(umpire, 0.36, 0.04, Vector3(0, 2.02, 0), Color("eeeeeb"))
 	cylinder(umpire, 0.23, 0.18, Vector3(0, 2.08, 0), Color("eeeeeb"))
-	bowling_arm = bowler.get_node("RightArm")
+	bowling_arm = bowler.get_node("UpperBody/RightArm")
+	(bowler as CricketAthlete).offspin_pose(OffspinAction.RELEASE_TIME)
+	bowling_release_offset = (bowler as CricketAthlete).right_hand.x
+	(bowler as CricketAthlete).idle_pose(0)
 	for pos in [Vector3(-10, 0, 15), Vector3(12, 0, 12), Vector3(-20, 0, -5), Vector3(23, 0, -12), Vector3(0, 0, 25)]:
 		fielders.append(player(pos, Color("df6549")) as CricketAthlete)
 	ball = sphere(self, 0.075, Vector3(0, 1.8, -10), Color("b52c3b"))
@@ -329,18 +334,20 @@ func _physics_process(delta: float) -> void:
 		swing_age += delta
 		bat.rotation.x = swing_angle(swing_age)
 	if phase == "runup":
-		bowler.position.x = delivery_x - 0.42
-		bowler.position.z = lerpf(-15, -10.5, minf(clock / 1.1, 1))
-		bowler.position.y = 0.04
-		(bowler as CricketAthlete).run_pose(clock, clock / 1.1)
+		bowler.position.x = 0.75
+		bowler.position.z = -15.0 + OffspinAction.travel(clock)
+		bowler.position.y = 0.04 + (bowler as CricketAthlete).hop_height(clock)
+		(bowler as CricketAthlete).offspin_pose(clock)
 		ball.position = (bowler as CricketAthlete).release_point()
 		ball.visible = true
-		if clock >= 1.1:
+		if clock >= OffspinAction.RELEASE_TIME:
 			phase = "delivery"
 			clock = 0
 			bowler.position.y = 0.04
-			(bowler as CricketAthlete).run_pose(1.1, 1.0)
-			physics.launch((bowler as CricketAthlete).release_point(), Vector3(0, -1.4, delivery_speed))
+			(bowler as CricketAthlete).offspin_pose(OffspinAction.RELEASE_TIME)
+			var origin := (bowler as CricketAthlete).release_point()
+			var lateral_speed := delivery_speed * (delivery_x - origin.x) / (10.06 - origin.z)
+			physics.launch(origin, Vector3(lateral_speed, -1.4, delivery_speed))
 			ball.position = physics.position + Vector3(0, 0.039, 0)
 			ball.visible = true
 	elif phase == "delivery" or phase == "flight":
@@ -349,7 +356,7 @@ func _physics_process(delta: float) -> void:
 		ball.position = physics.position + Vector3(0, 0.039, 0)
 		if phase == "delivery":
 			(bowler as CricketAthlete).follow_pose(clock)
-			bowler.position.z = -10.5 + minf(clock / 0.55, 1.0) * 1.15
+			bowler.position.z = -15.0 + OffspinAction.travel(OffspinAction.RELEASE_TIME + clock)
 			if not contact_checked and CricketBallPhysics.crosses_plane(before, physics.position, 8.6):
 				contact_checked = true
 				var point := CricketBallPhysics.at_plane(before, physics.position, 8.6)
@@ -385,9 +392,9 @@ func _physics_process(delta: float) -> void:
 			camera.look_at(ball.position)
 	elif phase == "result" and clock >= 1.8:
 		ball.visible = false
-		umpire.get_node("LeftArm").rotation = Vector3.ZERO
-		umpire.get_node("RightArm").rotation = Vector3.ZERO
-		bowler.position = Vector3(0, 0.03, -15)
+		umpire.get_node("UpperBody/LeftArm").rotation = Vector3.ZERO
+		umpire.get_node("UpperBody/RightArm").rotation = Vector3.ZERO
+		bowler.position = Vector3(0.75, 0.04, -15)
 		(bowler as CricketAthlete).idle_pose(0)
 		follow_camera = false
 		set_camera()
@@ -410,8 +417,8 @@ func finish_delivery(text_value: String) -> void:
 	phase = "result"
 	clock = 0
 	if text_value.begins_with("SIX"):
-		umpire.get_node("LeftArm").rotation.z = PI
-		umpire.get_node("RightArm").rotation.z = PI
+		umpire.get_node("UpperBody/LeftArm").rotation.z = PI
+		umpire.get_node("UpperBody/RightArm").rotation.z = PI
 	deliveries += 1
 	message.text = text_value
 	update_score()
@@ -430,9 +437,9 @@ func reset() -> void:
 	hit = false
 	follow_camera = false
 	bat.rotation = Vector3.ZERO
-	umpire.get_node("LeftArm").rotation = Vector3.ZERO
-	umpire.get_node("RightArm").rotation = Vector3.ZERO
-	bowler.position = Vector3(0, 0.03, -15)
+	umpire.get_node("UpperBody/LeftArm").rotation = Vector3.ZERO
+	umpire.get_node("UpperBody/RightArm").rotation = Vector3.ZERO
+	bowler.position = Vector3(0.75, 0.04, -15)
 	(bowler as CricketAthlete).idle_pose(0)
 	ball.visible = false
 	action.disabled = false
@@ -455,7 +462,7 @@ func smoke_test() -> void:
 		act()
 		delivery_x = 0
 		act() # Early run-up swing must miss, not allow repeated swings.
-		for step in range(500):
+		for step in range(650):
 			_physics_process(1.0 / 120.0)
 			if phase == "ready" or phase == "finished":
 				break
@@ -485,7 +492,7 @@ func smoke_test() -> void:
 	assert(deliveries == 0 and phase == "ready" and not ball.visible)
 	act()
 	delivery_x = 0.5
-	for step in range(500):
+	for step in range(650):
 		_physics_process(1.0 / 120.0)
 		if phase == "ready":
 			break

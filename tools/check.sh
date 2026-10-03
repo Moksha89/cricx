@@ -8,9 +8,11 @@ if [[ -d /workspace/tooling/config ]]; then
 fi
 godot --headless --editor --import --quit > /tmp/cricx-check-import.log 2>&1
 if rg -n 'SCRIPT ERROR|ERROR:' /tmp/cricx-check-import.log; then exit 1; fi
-godot --headless --script res://tests/physics_test.gd
-godot --headless --script res://tests/ui_test.gd
-godot --headless --script res://tests/animation_test.gd
+for suite in physics ui animation; do
+  godot --headless --script "res://tests/${suite}_test.gd" > "/tmp/cricx-check-${suite}.log" 2>&1
+  cat "/tmp/cricx-check-${suite}.log"
+  if rg -n 'SCRIPT ERROR|ERROR:' "/tmp/cricx-check-${suite}.log"; then exit 1; fi
+done
 timeout 30 godot --headless -- --smoke-test > /tmp/cricx-check-scene.log 2>&1
 cat /tmp/cricx-check-scene.log
 if rg -n 'SCRIPT ERROR|ERROR:' /tmp/cricx-check-scene.log; then exit 1; fi
