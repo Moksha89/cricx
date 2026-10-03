@@ -1,5 +1,7 @@
 # Off-spin reference study
 
+**Historical planning:** the character/action implementation described below was removed from the current 0.4.0 nets-only rebuild. It remains in earlier Git commits. Delivery research is still provisional.
+
 ## Evidence and limits
 
 The user supplied **Harbhajan Singh Bowling Style Analysis.mp4**, 10.854 seconds, 720 × 1280 at 30 fps, plus a portrait. The footage contains edits, slow motion, a side-angle excerpt, a rear view of one delivery, and a closer approach view. It is useful for an animation study, not calibrated motion capture. The supplied video and portrait are not redistributed in this repository.

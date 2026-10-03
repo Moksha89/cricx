@@ -1,7 +1,7 @@
 config_version=5
 
 [application]
-config/name="CricX — First Nets"
+config/name="CricX — Bowling Nets"
 config/icon="res://icon.svg"
 boot_splash/bg_color=Color(0.067, 0.169, 0.247, 1)
 run/main_scene="res://main.tscn"

@@ -49,3 +49,18 @@ This entry supersedes previous APK checksums and source-only status.
 - Net walls are visual geometry. This is straight-ball simulation with uncalibrated surface parameters and estimated animation, not measured Harbhajan deliveries or a realistic scanned character.
 
 Current APK SHA-256: `8547f1ce895bbb0e36a2a615548cf5359d0108a3752c15a3d0bf50b9794d1016`.
+
+## Indoor nets-only rebuild — APK 0.4.0 (2026-10-03)
+
+This entry supersedes previous APK checksums and feature lists.
+
+- Stadium, batting, players, umpire, fielders and character/action scripts removed. The room and camera are the scope of this version.
+- Physics: 764 checks, zero failures. Obsolete boundary/scoring tests were removed with the batting mode; no tests were disabled. The first-bounce height check uses a 1 µm floating-point tolerance.
+- Nets test passed all 27 line/length/pace combinations, actual first bounce, stump outcomes, side/end/roof containment, six launches, controls, reset, playback and licence popup.
+- Camera tests passed approach-anchor tracking, tighter release framing, ball-follow travel, lane clearance and bounded touch orbit. No predicted landing point feeds the camera.
+- 240 frames of a camera/launcher sequence rendered on desktop OpenGL and inspected as a contact sheet. Indoor materials and scene layout inspected visually. This is estimated camera choreography with an empty actor anchor, not a bowler animation.
+- Android debug APK exported successfully, signatures v2/v3 and 16 KB zip alignment verified.
+- No phone or Android emulator runtime test for 0.4.0. Physical device compatibility/performance remains unverified.
+- Net response is an energy-dissipating plane approximation, without cloth deformation. Wickets use swept collision and an initial damped ball response, without falling bails. No spin/swing/drag or human movement is included. The ball-launch test is not a manual bowling mechanic.
+
+Current APK SHA-256: `06304e03a947ff244cef23475389686c06c775da3def436464654ef0e9c2b5b7`.

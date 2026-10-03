@@ -11,21 +11,25 @@ const GROUND := PITCH_LEVEL + RADIUS
 const RESTITUTION := 0.55
 const IMPACT_RETENTION := 0.88
 const ROLL_DECELERATION := 2.8
-const BOUNDARY := 40.0
 var position := Vector3.ZERO
 var velocity := Vector3.ZERO
 var bounces := 0
 var rolling := false
-var boundary_score := 0
 var first_bounce_position := Vector3.INF
+var net_enabled := false
+var net_contacts := 0
+const NET_HALF_WIDTH := 2.6
+const NET_END := 13.0
+const NET_TOP := 3.26
+const NET_RESTITUTION := 0.08
 
 func launch(origin: Vector3, initial_velocity: Vector3) -> void:
 	position = origin
 	velocity = initial_velocity
 	bounces = 0
 	rolling = false
-	boundary_score = 0
 	first_bounce_position = Vector3.INF
+	net_contacts = 0
 
 func advance(delta: float) -> void:
 	assert(delta >= 0)
@@ -33,7 +37,6 @@ func advance(delta: float) -> void:
 	# Small bounded substeps make bounces stable even when called by a slow frame.
 	while remaining > 0.0000001:
 		var step := minf(remaining, 1.0 / 240.0)
-		var previous := position
 		if rolling:
 			var speed := Vector2(velocity.x, velocity.z).length()
 			var next_speed := maxf(0, speed - ROLL_DECELERATION * step)
@@ -42,7 +45,6 @@ func advance(delta: float) -> void:
 				position += direction * ((speed + next_speed) * 0.5 * step)
 				velocity = direction * next_speed
 			position.y = GROUND
-			record_boundary(previous, position, bounces)
 		else:
 			var next := position + velocity * step + Vector3(0, -0.5 * GRAVITY * step * step, 0)
 			if next.y < GROUND:
@@ -51,8 +53,6 @@ func advance(delta: float) -> void:
 				impact_time = clampf(impact_time, 0, step)
 				position += velocity * impact_time + Vector3(0, -0.5 * GRAVITY * impact_time * impact_time, 0)
 				position.y = GROUND
-				record_boundary(previous, position, bounces)
-				var impact_position := position
 				velocity.y -= GRAVITY * impact_time
 				velocity.y = -velocity.y * RESTITUTION
 				velocity.x *= IMPACT_RETENTION
@@ -70,11 +70,11 @@ func advance(delta: float) -> void:
 					position.y = maxf(position.y, GROUND)
 				else:
 					position += velocity * rest
-				record_boundary(impact_position, position, bounces)
 			else:
 				position = next
 				velocity.y -= GRAVITY * step
-				record_boundary(previous, position, bounces)
+		if net_enabled:
+			resolve_net()
 		remaining -= step
 
 static func crosses_plane(before: Vector3, after: Vector3, z: float) -> bool:
@@ -91,9 +91,31 @@ static func strikes_stumps(point: Vector3) -> bool:
 			return true
 	return point.y >= BAIL_TOP - 0.018 - RADIUS and absf(point.x) <= 0.1143 + RADIUS
 
-func record_boundary(before: Vector3, after: Vector3, bounce_count: int) -> void:
-	if boundary_score == 0 and Vector2(before.x, before.z).length() < BOUNDARY and Vector2(after.x, after.z).length() >= BOUNDARY:
-		boundary_score = 6 if bounce_count == 0 else 4
-
-func boundary_runs() -> int:
-	return boundary_score
+func resolve_net() -> void:
+	# Stationary compliant-net approximation: lose normal energy on contact.
+	# It contains the ball; it does not simulate cloth deformation.
+	if position.z < -16.0 - RADIUS:
+		return
+	var limit := NET_HALF_WIDTH - RADIUS
+	if absf(position.x) > limit and position.y <= NET_TOP:
+		var side := signf(position.x)
+		position.x = side * limit
+		if velocity.x * side > 0:
+			velocity.x = -velocity.x * NET_RESTITUTION
+			velocity.y *= 0.65
+			velocity.z *= 0.65
+			net_contacts += 1
+	if position.z > NET_END - RADIUS and absf(position.x) <= NET_HALF_WIDTH and position.y <= NET_TOP:
+		position.z = NET_END - RADIUS
+		if velocity.z > 0:
+			velocity.z = -velocity.z * NET_RESTITUTION
+			velocity.x *= 0.65
+			velocity.y *= 0.65
+			net_contacts += 1
+	if position.y > NET_TOP - RADIUS and absf(position.x) <= NET_HALF_WIDTH:
+		position.y = NET_TOP - RADIUS
+		if velocity.y > 0:
+			velocity.y = -velocity.y * NET_RESTITUTION
+			velocity.x *= 0.65
+			velocity.z *= 0.65
+			net_contacts += 1
