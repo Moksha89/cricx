@@ -8,7 +8,7 @@ if [[ -d /workspace/tooling/config ]]; then
 fi
 godot --headless --editor --import --quit > /tmp/cricx-check-import.log 2>&1
 if rg -n 'SCRIPT ERROR|ERROR:' /tmp/cricx-check-import.log; then exit 1; fi
-for suite in physics bowling_nets; do
+for suite in physics delivery bowling_nets; do
   check_status=0
   godot --headless --script "res://tests/${suite}_test.gd" > "/tmp/cricx-check-${suite}.log" 2>&1 || check_status=$?
   cat "/tmp/cricx-check-${suite}.log"

@@ -1,7 +1,7 @@
 class_name CricketBallPhysics
 extends RefCounted
 
-# SI units: metres, seconds. Deliberately omits seam, swing, spin and aerodynamic drag.
+# SI units. Aerodynamic coefficients are prototype tuning, not measured player data.
 const GRAVITY := 9.81
 const RADIUS := 0.036
 const PITCH_LEVEL := 0.04
@@ -16,6 +16,18 @@ var velocity := Vector3.ZERO
 var bounces := 0
 var rolling := false
 var first_bounce_position := Vector3.INF
+const MASS := 0.156
+const INERTIA := 0.4 * MASS * RADIUS * RADIUS
+const SURFACE_FRICTION := 0.28
+var angular_velocity := Vector3.ZERO
+var orientation := Quaternion.IDENTITY
+var drag_coefficient := 0.0
+var swing_coefficient := 0.0
+var late_swing := false
+var knuckle := false
+var flight_range := 20.0
+var flight_start := Vector3.ZERO
+var elapsed := 0.0
 var net_enabled := false
 var net_contacts := 0
 const NET_HALF_WIDTH := 2.6
@@ -25,6 +37,9 @@ const NET_RESTITUTION := 0.08
 
 func launch(origin: Vector3, initial_velocity: Vector3) -> void:
 	position = origin
+	flight_start = origin
+	elapsed = 0
+	orientation = Quaternion.IDENTITY
 	velocity = initial_velocity
 	bounces = 0
 	rolling = false
@@ -37,6 +52,9 @@ func advance(delta: float) -> void:
 	# Small bounded substeps make bounces stable even when called by a slow frame.
 	while remaining > 0.0000001:
 		var step := minf(remaining, 1.0 / 240.0)
+		elapsed += step
+		if angular_velocity.length_squared() > 0.001:
+			orientation = (Quaternion(angular_velocity.normalized(), angular_velocity.length() * step) * orientation).normalized()
 		if rolling:
 			var speed := Vector2(velocity.x, velocity.z).length()
 			var next_speed := maxf(0, speed - ROLL_DECELERATION * step)
@@ -45,18 +63,31 @@ func advance(delta: float) -> void:
 				position += direction * ((speed + next_speed) * 0.5 * step)
 				velocity = direction * next_speed
 			position.y = GROUND
+			angular_velocity = Vector3(velocity.z / RADIUS, 0, -velocity.x / RADIUS)
 		else:
-			var next := position + velocity * step + Vector3(0, -0.5 * GRAVITY * step * step, 0)
+			var acceleration := air_acceleration()
+			var next := position + velocity * step + acceleration * (0.5 * step * step)
 			if next.y < GROUND:
 				# Solve time of ground contact; apply restitution to velocity at impact.
-				var impact_time := (velocity.y + sqrt(velocity.y * velocity.y + 2.0 * GRAVITY * maxf(0, position.y - GROUND))) / GRAVITY
+				var effective_gravity := maxf(0.01, -acceleration.y)
+				var impact_time := (velocity.y + sqrt(velocity.y * velocity.y + 2.0 * effective_gravity * maxf(0, position.y - GROUND))) / effective_gravity
 				impact_time = clampf(impact_time, 0, step)
-				position += velocity * impact_time + Vector3(0, -0.5 * GRAVITY * impact_time * impact_time, 0)
+				position += velocity * impact_time + acceleration * (0.5 * impact_time * impact_time)
 				position.y = GROUND
-				velocity.y -= GRAVITY * impact_time
+				velocity += acceleration * impact_time
+				var normal_impulse := MASS * (1 + RESTITUTION) * absf(velocity.y)
 				velocity.y = -velocity.y * RESTITUTION
-				velocity.x *= IMPACT_RETENTION
-				velocity.z *= IMPACT_RETENTION
+				if angular_velocity.length_squared() > 0.001:
+					var lever := Vector3(0, -RADIUS, 0)
+					var slip := velocity + angular_velocity.cross(lever)
+					slip.y = 0
+					var impulse := -slip / (1.0 / MASS + RADIUS * RADIUS / INERTIA)
+					impulse = impulse.limit_length(SURFACE_FRICTION * normal_impulse)
+					velocity += impulse / MASS
+					angular_velocity += lever.cross(impulse) / INERTIA
+				else:
+					velocity.x *= IMPACT_RETENTION
+					velocity.z *= IMPACT_RETENTION
 				if bounces == 0:
 					first_bounce_position = position
 				bounces += 1
@@ -65,14 +96,15 @@ func advance(delta: float) -> void:
 					velocity.y = 0
 				var rest := step - impact_time
 				if not rolling:
-					position += velocity * rest + Vector3(0, -0.5 * GRAVITY * rest * rest, 0)
-					velocity.y -= GRAVITY * rest
+					var after_acceleration := air_acceleration()
+					position += velocity * rest + after_acceleration * (0.5 * rest * rest)
+					velocity += after_acceleration * rest
 					position.y = maxf(position.y, GROUND)
 				else:
 					position += velocity * rest
 			else:
 				position = next
-				velocity.y -= GRAVITY * step
+				velocity += acceleration * step
 		if net_enabled:
 			resolve_net()
 		remaining -= step
@@ -119,3 +151,13 @@ func resolve_net() -> void:
 			velocity.x *= 0.65
 			velocity.z *= 0.65
 			net_contacts += 1
+
+func air_acceleration() -> Vector3:
+	var speed := velocity.length()
+	var result := Vector3(0, -GRAVITY, 0) - velocity * (drag_coefficient * speed)
+	var progress := clampf((position.z - flight_start.z) / flight_range, 0, 1)
+	var movement := smoothstep(0.55, 0.95, progress) if late_swing else 1.0
+	result.x += swing_coefficient * speed * speed * movement
+	if knuckle:
+		result.x += 0.00035 * speed * speed * (sin(elapsed * 26) + 0.5 * sin(elapsed * 41))
+	return result

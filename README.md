@@ -1,41 +1,28 @@
-# CricX — Bowling Nets
+# CricX — Outdoor Bowling Nets
 
-An Android **nets-only environment and straight-ball test**, built with Godot 4.6.3. The old stadium, players, batting, fielders, umpire and character animations have been removed. Previous versions remain in Git history.
+Playable Godot 4.6.3 Android practice prototype, version 0.5.0. Download [the APK](downloads/cricx-debug.apk) and see [the Android screenshot](downloads/nets-android.png) and [test report](TESTING.md).
 
-## Test it
+## Play
 
-Install `downloads/cricx-debug.apk` (0.4.0) on a 64-bit Android 7+ device.
+Use landscape orientation. Select one of eight deliveries on the right. Drag the left speed slider (60–160 km/h; knuckle capped at 110). Drag the lime pitch target to set line and length; LOCK prevents changes. Swipe upward inside BOWL to start the run-up. Another delivery is blocked until the current ball finishes. The camera button cycles follow, side and fixed views. After six balls, swipe again for a new over. Settings provide reset, batter handedness and half-speed playback.
 
-- Choose **LINE**, **LENGTH** and **PACE**, then **LAUNCH**.
-- The camera first follows an empty approach anchor, moves closer to the release location, then tracks the actual ball. This is preparation for attaching a future bowler; no character is currently present.
-- **CAM** cycles follow, side and fixed views. Drag the scene horizontally while idle in follow view for a limited orbit. UI touches remain separate.
-- **REPLAY** cycles 1×, ½× and ¼× playback.
-- A gold spot appears at the actual first bounce. The result reports stump hit/miss, bounce distance, lateral line and release height.
-- Six launches complete a session. **RESET** starts again. **LICENCES** displays engine and dependency notices.
+The original skinned bowler has 17 bones, a dark teal kit and white shoes. Idle, run-up, front-foot plant, release and follow-through are driven by bone animation and inverse kinematics. The ball remains in the hand until release; its initial velocity is solved from that actual release point. Outdoor grass, pitch wear, trees, metal poles and green netting are original procedural assets. Both wickets have three stumps and two bails, separated by 20.12 m; far bails fall on a stump hit.
 
-## Reusable elements
+## Simulation
 
-One original indoor hall and enclosed practice lane, procedural surface materials, net posts, batched net wires, pitch, creases and wickets. Wickets are 20.12 m apart, pitch width is 3.05 m, stumps are 711.2 mm high, popping creases are 1.22 m in front of the wicket and return creases are 1.32 m from centre. Ball rendering and simulation share a 36 mm radius.
+The ball uses SI units, 9.81 m/s² gravity, bounded 240 Hz integration, aerodynamic drag, configurable swing and late reverse swing, angular velocity, friction-limited spin impulses at bounce, rolling friction, swept stump checks and dissipative net-plane collisions. Cutters move after bounce; knuckle balls use lower pace and spin. In/out directions reverse with the batter's handedness. The trajectory preview and launch solver use the same integrator; tests check the actual first bounce within 2.5 cm of the selected target.
 
-`BowlingCameraRig` takes an actor-position anchor for the approach and actual ball position/velocity during delivery. It does not read a predicted landing point. It can be reused with a future animated player. The camera references are the two user-supplied game clips; none of their footage, art or audio is included in the application.
+The model remains a gameplay approximation: aerodynamic coefficients, restitution and friction are tuned rather than measured. Netting does not deform, stump bodies remain upright, and pitch/seam variations are not modelled. The bowler and scenery are stylised, not photorealistic; animation is hand-authored, not motion capture or an exact recreation of a professional's action. This is a bowling practice prototype, without batting, multiplayer, tournaments or face scanning.
 
-## Physics and limits
+## Develop
 
-The test launcher computes an initial velocity for the selected bounce point. After launch the ball advances through gravity, ground impact and rolling friction; it is not teleported to a landing target. Swept wicket checks avoid missing fast crossings. Side, end and roof net surfaces contain the ball and dissipate energy. The net response is a stationary-plane approximation, not deformable cloth. Wicket impact uses an initial damped response; stumps/bails do not fall.
-
-This is working test infrastructure, **not a finished realistic cricket simulation or photorealistic asset pack**. Restitution and friction need calibration. There is no player, bowling action, swing, spin, aerodynamic drag, seam model, manual bowling timing or batting. Surface textures are procedural. The hall uses low-cost lighting suitable for this renderer, not an offline-rendered scene.
-
-## Development
-
-Open `project.godot` in Godot 4.6.3, or run:
+Open `project.godot` in Godot 4.6.3. Run:
 
 ```sh
 ./tools/check.sh
 ./tools/export_android.sh
 ```
 
-These scripts activate prepared cloud tooling under `/workspace/tooling` when available. Locally, install matching Godot export templates and configure the Android SDK, Java and debug keystore in Godot Editor Settings. Export supports ARM64 phones and x86_64 emulators. Keys stay outside the repository.
+Scripts use prepared cloud tooling when present. Elsewhere, install matching Godot Android export templates and configure the Android SDK, Java and a debug keystore in Editor Settings. ARM64 and x86_64 are exported. Signing keys stay outside the repository. `tools/create_bowler.py` regenerates the original GLB using Blender.
 
-`tests/physics_test.gd` checks analytic gravity, timestep agreement, bounce, rolling friction, net energy loss and swept wicket tests. `tests/bowling_nets_test.gd` checks all 27 delivery settings, actual first bounce, stump results, side/end/roof containment, session completion, controls, licences and camera tracking. These do not establish physical-phone performance or realism against measured cricket trajectories. See [TESTING.md](TESTING.md).
-
-[Camera preview](downloads/nets-camera-preview.mp4) shows the current no-player camera and launcher sequence. The earlier off-spin research brief in `docs/` is historical planning, with explicit unverified-source limitations.
+Tests cover physics, delivery profiles, the complete scene and touch ownership. A debug-only opt-in `user://run_qa` marker runs the scene checks on Android and writes `qa_report.json`; it is absent in ordinary play. No user photos or reference footage are packaged. Earlier research notes and versions are retained in Git history and `docs/`.

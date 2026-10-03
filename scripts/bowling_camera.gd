@@ -39,9 +39,9 @@ func place(eye: Vector3, target: Vector3, lens: float, delta: float) -> void:
 
 func update_approach(actor_position: Vector3, progress: float, delta: float) -> void:
 	var gather := smoothstep(0.60, 1.0, progress)
-	var offset := Vector3(lerpf(0, 0.65, gather), lerpf(2.45, 2.75, gather), lerpf(-5.3, -2.6, gather))
+	var offset := Vector3(lerpf(-0.35, 0.4, gather), lerpf(2.10, 2.65, gather), lerpf(-3.9, -4.0, gather))
 	offset = Basis(Vector3.UP, orbit_yaw) * offset
-	place(actor_position + offset, actor_position + Vector3(0, 1.15, 1.2), lerpf(58, 46, gather), delta)
+	place(actor_position + offset, actor_position + Vector3(0, lerpf(1.15,1.0,gather), lerpf(1.2,0.3,gather)), 52, delta)
 
 func update_delivery(ball_position: Vector3, velocity: Vector3, delta: float) -> void:
 	var direction := Vector3(velocity.x, 0, maxf(velocity.z, 0.5)).normalized()
