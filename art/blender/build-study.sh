@@ -12,3 +12,5 @@ ffmpeg -loglevel error -y -framerate 30 -pattern_type glob -i 'build/blender-act
 cp build/blender-nets-release.png downloads/blender-bowling-release.png
 cp build/blender-action-checks.json downloads/blender-action-checks.json
 cp build/blender-fbx-checks.json downloads/blender-fbx-checks.json
+blender -b --python-exit-code 1 --python art/blender/render_pose_review.py -- --animation
+ffmpeg -loglevel error -y -framerate 30 -pattern_type glob -i 'build/review-side-????.png' -framerate 30 -pattern_type glob -i 'build/review-rear-????.png' -filter_complex hstack -c:v libx264 -crf 18 -pix_fmt yuv420p -movflags +faststart downloads/blender-motion-review.mp4

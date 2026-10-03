@@ -144,17 +144,23 @@ def ik(upper,lower,end,target,pole):
  aim(upper,elbow-a);aim(lower,a+axis*d-elbow)
 def smooth(t):return t*t*(3-2*t)
 def interp(t,keys):
+ # Non-uniform cubic Hermite: retain velocity through intermediate poses.
  if t<=keys[0][0]:return Vector(keys[0][1])
- for (a,x),(b,y) in zip(keys,keys[1:]):
-  if t<=b:return Vector(x).lerp(Vector(y),smooth((t-a)/(b-a)))
- return Vector(keys[-1][1])
+ if t>=keys[-1][0]:return Vector(keys[-1][1])
+ for i,((a,x),(b,y)) in enumerate(zip(keys,keys[1:])):
+  if t<=b:
+   x,y=Vector(x),Vector(y);u=(t-a)/(b-a);dt=b-a
+   before=keys[max(0,i-1)];after=keys[min(len(keys)-1,i+2)]
+   m0=(y-Vector(before[1]))/(b-before[0]) if i else Vector((0,0,0))
+   m1=(Vector(after[1])-x)/(after[0]-a) if i+2<len(keys) else Vector((0,0,0))
+   return (2*u**3-3*u*u+1)*x+(u**3-2*u*u+u)*dt*m0+(-2*u**3+3*u*u)*y+(u**3-u*u)*dt*m1
 FPS=60;RELEASE=2.40;DURATION=3.50
 # Root travel slows into a front-foot block; follow-through keeps travelling forward.
 def hermite(t,d,start,end):
  return (t*t*t-2*t*t+t)*start+(-2*t*t*t+3*t*t)*d+(t*t*t-t*t)*end
 def root_at(t):
- if t<=1.6:return -4.4*(t/1.6)
- if t<=2.05:return -4.4-hermite((t-1.6)/.45,.9,2.75*.45,.8*.45)
+ if t<=1.6:return -hermite(t/1.6,4.4,1.6*1.4,1.6*3.15)
+ if t<=2.05:return -4.4-hermite((t-1.6)/.45,.9,3.15*.45,.8*.45)
  if t<=2.55:return -5.3-hermite((t-2.05)/.5,.28,.8*.5,.3*.5)
  return -5.58-hermite(min(1,(t-2.55)/.95),1.15,.3*.95,0)
 phase_keys={
@@ -169,25 +175,40 @@ for frame in range(int(DURATION*FPS)+1):
  root=root_at(t);rig.location=(0,root,0);bpy.context.view_layer.update()
  # Pelvis loading, torso side-on gather, forward trunk flexion after release.
  gather=max(0,min(1,(t-1.5)/.45));flex=max(0,min(1,(t-2.32)/.55))*(1-max(0,min(1,(t-3.1)/.4)))
- pelvis=rig.pose.bones['pelvis'];load=-.085*gather if t>=1.6 else -.08*min(1,t/.16)
+ pelvis=rig.pose.bones['pelvis'];run_phase=2*math.pi*(t/.48+.10*t*t)
+ load=-.035*gather-.055*flex if t>=1.6 else -.015+.018*math.cos(2*run_phase)
  if 1.63<t<2.05:load+=.13*math.sin(math.pi*(t-1.63)/.42)**2
- pelvis.location=arm.bones['pelvis'].matrix_local.to_3x3().inverted()@Vector((0,0,load))
+ pelvis.location=arm.bones['pelvis'].matrix_local.to_3x3().inverted()@Vector((0,-.18*gather,load))
  unwind=1-max(0,min(1,(t-2.0)/.6))
- yaw=.72*gather*unwind
+ yaw=.72*gather*unwind if t>=1.6 else .055*math.sin(run_phase)
  pelvis.rotation_quaternion=__import__('mathutils').Quaternion(arm.bones['pelvis'].matrix_local.to_3x3().inverted()@Vector((0,0,1)),yaw*.42)
- rig.pose.bones['spine'].rotation_quaternion=__import__('mathutils').Quaternion(Vector((1,0,0)),.09*gather+.38*flex)
- rig.pose.bones['chest'].rotation_quaternion=__import__('mathutils').Quaternion(arm.bones['chest'].matrix_local.to_3x3().inverted()@Vector((0,0,1)),yaw*.58)
+ rig.pose.bones['spine'].rotation_quaternion=__import__('mathutils').Quaternion(Vector((1,0,0)),.09*gather+.38*flex+(.10 if t<1.6 else 0))
+ rig.pose.bones['chest'].rotation_quaternion=__import__('mathutils').Quaternion(arm.bones['chest'].matrix_local.to_3x3().inverted()@Vector((0,0,1)),(.72*gather*(1-max(0,min(1,(t-2.13)/.47))))*.58 if t>=1.6 else -yaw*.65)
  rig.pose.bones['neck'].rotation_quaternion=__import__('mathutils').Quaternion(arm.bones['neck'].matrix_local.to_3x3().inverted()@Vector((0,0,1)),-yaw*.85)
  bpy.context.view_layer.update()
+ # Keep the support leg within anatomical reach while the pelvis advances.
+ if 2.05<=t<=2.55:
+  support=Vector((.12,-.38+root_at(2.05)-root,.085))
+  hip=global_point('thigh_L');reach=arm.bones['thigh_L'].length+arm.bones['shin_L'].length-.002
+  horizontal=(Vector((hip.x,hip.y,0))-Vector((support.x,support.y,0))).length
+  maximum_height=support.z+math.sqrt(max(0,reach*reach-horizontal*horizontal))
+  if hip.z>maximum_height:
+   pelvis.location+=arm.bones['pelvis'].matrix_local.to_3x3().inverted()@Vector((0,0,maximum_height-hip.z))
+   bpy.context.view_layer.update()
  for tag,sign in [('L',1),('R',-1)]:
   if t<1.6:
-   phase=(t/.45+(0 if tag=='L' else .5))%1
-   if phase<.55:
-    stride=-.34+.68*phase/.55;lift=0
+   phase=(t/.48+.10*t*t+(0 if tag=='L' else .5))%1
+   if phase<.58:
+    stride=-.36+.72*phase/.58;lift=0
    else:
-    progress=(phase-.55)/.45;stride=.34-.68*smooth(progress);lift=.22*math.sin(progress*math.pi)
-   blend=min(1,t/.16);stride*=blend;lift*=blend
-   foot=Vector((sign*.14,stride,.085+lift));hand=Vector((sign*.245,-stride*.8,1.10)).lerp(Vector((sign*.245,-.12,1.02)),1-blend)
+    progress=(phase-.58)/.42;stride=.36-.72*smooth(progress);lift=.25*math.sin(progress*math.pi)
+   blend=smooth(min(1,t/.20));stride*=blend;lift*=blend
+   foot=Vector((sign*.13,stride,.085+lift))
+   # Bent elbows and opposite arm swing; hands pass the chest, not the hips.
+   swing=math.sin(run_phase+(0 if tag=='L' else math.pi))
+   hand=Vector((sign*(.24+.025*swing),-.16-.23*swing,1.27+.07*swing))
+   if t>1.35:
+    hand=hand.lerp(interp(t,phase_keys['left_hand' if tag=='L' else 'right_hand']),smooth((t-1.35)/.25))
   else:
    foot=interp(t,[(1.6,(sign*.14,0,.12)),(1.85,(sign*.13,-.18,.35 if tag=='L' else .16)),(2.05,(sign*.12,-.38,.085 if tag=='L' else .30)),(2.40,(sign*.12,-.12,.085 if tag=='L' else .34)),(2.7,(sign*.14,-.40,.13 if tag=='R' else .21)),(3.1,(sign*.14,-.22,.09)),(3.5,(sign*.14,0,.085))])
    if tag=='L' and 2.05<=t<=2.55:
@@ -196,7 +217,7 @@ for frame in range(int(DURATION*FPS)+1):
    hand=interp(t,phase_keys['left_hand' if tag=='L' else 'right_hand'])
   ik('thigh_'+tag,'shin_'+tag,'foot_'+tag,foot,Vector((0,-1,0)))
   aim('foot_'+tag,Vector((sign*.04,-1,-.02 if foot.z<.12 else -.35)))
-  ik('upper_arm_'+tag,'forearm_'+tag,'hand_'+tag,hand,Vector((sign*.6,.25,0)))
+  ik('upper_arm_'+tag,'forearm_'+tag,'hand_'+tag,hand,Vector((sign*.6,.10-.18*flex,-.12)))
   # Hands retain grip through the gather, then fingers open through release.
   grip=1 if t<=RELEASE else max(0,1-(t-RELEASE)/.16)
   for f in range(1,6):

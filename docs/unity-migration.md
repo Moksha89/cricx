@@ -17,6 +17,12 @@ Blender checks: 847, zero failures on the final baked asset. Export/read-back ch
 
 A rendered full action and release still are published in `downloads`. The action has run-up, gather/bound, lead-arm pull-down, planted front leg, overarm release and follow-through. Facial detail, clothing tailoring, grip shape and movement polish remain work in progress; this is not a scanned or photorealistic athlete.
 
+## Motion revision after robotic-motion feedback
+
+The revised action uses non-uniform cubic interpolation for the hand paths instead of stopping at every intermediate pose. The run-up accelerates, bent-arm counter-swing accompanies the stride, and the shoulder turn follows the pelvis during delivery. Pelvis height and forward travel now accommodate the support leg's anatomical reach during the front-foot block. The ball still leaves the palm at 2.40 seconds.
+
+`art/blender/render_pose_review.py` renders side and rear key poses for inspection. These images and `downloads/blender-motion-review.mp4` are diagnostic side/rear views, separate from the lit nets preview. Constraint checks and visual inspection cannot certify professional animation quality: the run-up-to-gather transition, trailing-leg recovery, wrist articulation, character proportions and clothing still need further artistic refinement. This remains a hand-authored study, not motion capture.
+
 ## Unity setup and validation
 
 Unity 6000.0.23f1 is installed in the cloud. Its archive size and MD5 match official Unity release metadata. Its bundled URP version is 17.0.3. Unity download/package domains and reusable install/start instructions have been saved in the cloud configuration draft.

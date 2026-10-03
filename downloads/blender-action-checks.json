@@ -1,7 +1,7 @@
 {
   "checks": 847,
   "failures": [],
-  "front_foot_drift_m": 5.164601452834419e-07,
+  "front_foot_drift_m": 1.7201001019202465e-07,
   "root_travel_m": 5.522669802222904,
-  "release_hand_height_m": 1.9373891353607178
+  "release_hand_height_m": 1.9528533220291138
 }
