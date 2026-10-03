@@ -1,0 +1,11 @@
+{
+  "fps": 60,
+  "duration_seconds": 3.5,
+  "release_seconds": 2.4,
+  "release_frame": 145,
+  "front_foot_plant_seconds": 2.05,
+  "bones": 49,
+  "body_vertices": 13380,
+  "reference": "Right-arm finger-spin reference study, hand-authored, not motion capture",
+  "root_motion": true
+}

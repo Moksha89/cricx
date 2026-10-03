@@ -1,0 +1,10 @@
+{
+  "checks": {
+    "49_bones": true,
+    "ball_grip": true,
+    "baked_action": true,
+    "skinned_mesh": true,
+    "action_range": true
+  },
+  "failures": []
+}

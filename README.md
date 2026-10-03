@@ -1,3 +1,13 @@
+# Cricx — active Unity / Blender milestone
+
+The active project is now **Unity with URP**, scoped to a bowler, bowling action, nets and camera movement. Open [unity/README.md](unity/README.md) for setup and [migration status](docs/unity-migration.md) for verified results and remaining blockers. Editable Blender files are in `art/blender`; Unity FBX/texture assets are in `unity/Assets/Cricx`.
+
+[Blender action preview](downloads/blender-bowling-action.mp4) · [Release still](downloads/blender-bowling-release.png) · [Unity + Blender source](downloads/cricx-unity-study.zip).
+
+**No Unity APK has been built yet.** Unity Editor licensing currently blocks import and runtime validation. The APK and Godot source below are historical 0.5.0 artifacts, not the migrated project.
+
+---
+
 # CricX — Outdoor Bowling Nets
 
 Playable Godot 4.6.3 Android practice prototype, version 0.5.0. Download [the APK](downloads/cricx-debug.apk) and see [the Android screenshot](downloads/nets-android.png) and [test report](TESTING.md).

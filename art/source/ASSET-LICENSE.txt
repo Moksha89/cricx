@@ -1,0 +1,28 @@
+# This is a mesh file for MakeHuman
+#
+# This asset was explicitly released as CC0 in september 2020. The license
+# text for CC0 can be found in the root of this repository.
+#
+# The copyright holders at the point of the release to CC0 were:
+#
+# Copyright (C) 2020 Data Collection AB, https://www.datacollection.se
+# Copyright (C) 2020 Joel Palmius
+# Copyright (C) 2020 Jonas Hauquier
+#
+# The primary legal contact for MakeHuman is Data Collection AB.
+#
+# For more information, see homepage at http://www.makehumancommunity.org
+#
+# basemesh hm08
+v -0.3492 7.3299 1.4076
+v -0.3110 7.3315 1.4107
+v -0.3481 7.3465 1.4062
+v -0.3095 7.3456 1.4117
+
+Source: https://github.com/makehumancommunity/makehuman/blob/master/makehuman/data/3dobjs/base.obj
+License: CC0 1.0 Universal, explicitly declared in the source header.
+License text: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+The base mesh is anatomical topology, not a scan of any named person.
+Cricx clothing, rig, animation and nets are original additions.
+
+Retained source SHA-256: 8e761e6624b8f54536409135d1636da63b32486a90d4897f84e121d144f6fb4c

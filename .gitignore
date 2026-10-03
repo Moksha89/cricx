@@ -2,3 +2,11 @@
 build/
 *.keystore
 downloads/*.import
+unity/Library/
+unity/Temp/
+unity/Obj/
+unity/Logs/
+unity/UserSettings/
+unity/Builds/
+*.blend1
+art/blender/__pycache__/
